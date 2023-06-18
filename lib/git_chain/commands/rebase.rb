@@ -16,8 +16,27 @@ module GitChain
         end
 
         chain = current_chain(options)
-
         puts_debug("Rebasing chain #{chain.formatted}}}")
+
+        if Git.cherry_pick_in_progress?
+          cherry_pick_hash = Git.cherry_pick_hash()
+          args = ["cherry-pick", "--continue"]
+          puts_debug_git(*args)
+          Git.exec_no_interactive(*args)
+          puts "cherry pick hash #{cherry_pick_hash}!"
+          chain.branches[1..-1].each do |branch|
+            branch_sha = Git.rev_parse(branch.name)
+            puts "branch hash #{branch_sha}!"
+            if branch_sha == cherry_pick_hash
+              args = ["checkout", "-B", branch.name]
+              puts_debug_git(*args)
+              Git.exec(*args)
+            end
+          end
+#          rescue GitChain::Git::Failure => e
+#            puts_warning(e.message)
+#            raise(AbortSilent)
+        end
 
         branches_to_rebase = chain.branches[1..-1]
 

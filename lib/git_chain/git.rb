@@ -17,8 +17,21 @@ module GitChain
         Open3.capture3(*cmd)
       end
 
+      def capture3_no_iteractive(*args, dir: nil)
+        cmd = %w(git)
+        cmd += ["-C", dir] if dir
+        cmd += args
+        Open3.capture3({'GIT_EDITOR' => ':'}, *cmd)
+      end
+
       def exec(*args, dir: nil)
         out, err, stat = capture3(*args, dir: dir)
+        raise(Failure.new(args, err)) unless stat.success?
+        out.chomp
+      end
+
+      def exec_no_interactive(*args, dir: nil)
+        out, err, stat = capture3_no_iteractive(*args, dir: dir)
         raise(Failure.new(args, err)) unless stat.success?
         out.chomp
       end
@@ -119,6 +132,20 @@ module GitChain
         dir ||= ".git"
         !Dir.glob(File.join(File.expand_path(dir), "rebase-{apply,merge}")).empty?
       end
+
+      def cherry_pick_in_progress?(dir: nil)
+        dir ||= ".git"
+        File.exist?(File.join(File.expand_path(dir), "CHERRY_PICK_HEAD"))
+      end
+
+      def cherry_pick_hash(dir: nil)
+        dir ||= ".git"
+        str = File.read(File.join(File.expand_path(dir), "CHERRY_PICK_HEAD"))
+        str.strip!
+        str
+      end
+
+
 
       private
 
